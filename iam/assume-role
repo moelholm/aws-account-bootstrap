@@ -1,0 +1,50 @@
+#!/bin/bash
+
+if [ $# -lt 2 ]; then
+    echo "Usage: assume-role aws-profile-name role-to-assume"
+    echo ""
+    echo "Where:"
+    echo "    aws-profile-name  : name of the profile in ~/.aws/credentials"
+    echo "    role-to-assume    : name of the role to assume (simple name, not the complete ARN)"
+    exit 0
+fi
+
+# Grab input
+NEW_AWS_PROFILE="$1" # Profile to create/update in ~/.aws/credentials
+NEW_AWS_ROLE="$2"    # Role to assume
+echo ""
+echo "** Configuring aws-profile [$NEW_AWS_PROFILE] for IAM role [$NEW_AWS_ROLE]"
+
+# Current user, that hopefully can assume the admin role
+CURRENT_IAM_USER=$(aws sts get-caller-identity | jq -r '.Arn')
+AWS_ACCOUNT_ID=$(echo "$CURRENT_IAM_USER" | sed -e 's/.*:://' | sed -e 's/:.*//')
+echo "** Current account is [$AWS_ACCOUNT_ID]"
+echo "** Current user is    [$CURRENT_IAM_USER]"
+
+
+# Enter the one time generated token
+echo "** MFA code: "
+read -r MFA_TOKEN_CODE
+
+# Get the temporary admin role credentials
+ASSUME_ROLE_OUTPUT=$( \
+  aws sts assume-role \
+    --role-session-name "$NEW_AWS_ROLE-session" \
+    --role-arn "arn:aws:iam::${AWS_ACCOUNT_ID}:role/$NEW_AWS_ROLE" \
+    --serial "${CURRENT_IAM_USER//user/mfa}" \
+    --token-code "$MFA_TOKEN_CODE")
+
+# Create/update profile in ~/.aws/credentials
+aws configure --profile "$NEW_AWS_PROFILE" set aws_access_key_id "$(echo "$ASSUME_ROLE_OUTPUT" | jq -r .Credentials.AccessKeyId)"
+aws configure --profile "$NEW_AWS_PROFILE" set aws_secret_access_key "$(echo "$ASSUME_ROLE_OUTPUT" | jq -r .Credentials.SecretAccessKey)"
+aws configure --profile "$NEW_AWS_PROFILE" set aws_session_token "$(echo "$ASSUME_ROLE_OUTPUT" | jq -r .Credentials.SessionToken)"
+
+# Configure the AWS CLI and AWS SDKs to use the new profile
+export AWS_PROFILE="$NEW_AWS_PROFILE"     # AWS SDK's use this
+export AWS_DEFAULT_PROFILE="$AWS_PROFILE" # AWS CLI use this
+
+YOU_ARE=$(aws sts get-caller-identity | jq -r '.Arn')
+echo "**"
+echo "** You are: [$YOU_ARE]"
+echo "** Profile [$AWS_PROFILE] updated. Shell environment updated too. Enjoy!"
+echo ""
