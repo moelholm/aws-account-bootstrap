@@ -2,7 +2,7 @@
 
 ## Admin role
 
-Establish a 'role' that temporarily grants the user admin permissions. 
+Create an IAM role that temporarily grants admin permissions. 
 
 The role only can be assumed by a specified MFA enabled IAM user.
 
