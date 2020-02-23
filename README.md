@@ -4,7 +4,7 @@
 
 Create an IAM role that temporarily grants admin permissions. 
 
-The role only can be assumed by a specified MFA enabled IAM user.
+The role can only be assumed by a specified MFA enabled IAM user.
 
 ### Create an admin role
 
