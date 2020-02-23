@@ -1,0 +1,44 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+
+  IamUserThatMayAssumeRole:
+    Description: Name of the IAM user that may assume the role
+    Type: String
+
+  AdminRoleName:
+    Description: Name of the admin role
+    Type: String
+    Default: admin
+
+  AdminRoleMaxSessionDuration:
+    Description: The max session duration (in seconds) when assuming this role
+    Type: Number
+    Default: 3600
+
+Resources:
+
+  #
+  # Assuming this role gives you admin permissions.
+  #
+  # This definition requires you to present a one time token (MFA). In other words:
+  # it is not enough for attackers to have your IAM access key and secret information.
+  #
+  AdminRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref AdminRoleName
+      Path: /
+      MaxSessionDuration: !Ref AdminRoleMaxSessionDuration
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action:
+              - 'sts:AssumeRole'
+            Effect: Allow
+            Principal:
+              AWS:
+                - !Sub 'arn:aws:iam::${AWS::AccountId}:user/${IamUserThatMayAssumeRole}'
+            Condition:
+              Bool:
+                aws:MultiFactorAuthPresent: true
