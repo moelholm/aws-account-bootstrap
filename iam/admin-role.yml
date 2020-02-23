@@ -30,6 +30,8 @@ Resources:
       RoleName: !Ref AdminRoleName
       Path: /
       MaxSessionDuration: !Ref AdminRoleMaxSessionDuration
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
